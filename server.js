@@ -17,20 +17,28 @@ connectDB();
 const app = express();
 
 /* ===============================
-   CORS (IMPORTANTE)
+   CORS (FORMA CORRETA)
 ================================ */
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://estoque-front-mu.vercel.app' // SEM barra no final
+];
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',          // front local
-    'https://estoque-front-mu.vercel.app/' // TROQUE pela sua URL real da Vercel
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: (origin, callback) => {
+    // permite requests sem origin (Postman, Render healthcheck)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
-
-// 🔹 garante resposta do preflight
-app.options('*', cors());
 
 app.use(express.json());
 
@@ -38,17 +46,17 @@ app.use(express.json());
    ROTAS
 ================================ */
 
-// rota raiz (teste)
+// rota raiz
 app.get('/', (req, res) => {
   res.send('API Backend rodando 🚀');
 });
 
-// rotas da API
+// rotas principais
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes);
 
-// rotas de teste/mock
+// rotas mock/teste
 app.use('/webhook', webhookRoutes);
 app.use('/mock', mockRoutes);
 
@@ -58,14 +66,13 @@ app.use('/mock', mockRoutes);
 
 // erro geral
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error(err.message);
   res.status(500).json({
-    message: 'Ocorreu um erro no servidor',
-    error: process.env.NODE_ENV === 'development' ? err.message : {}
+    message: err.message || 'Erro interno do servidor'
   });
 });
 
-// 404
+// 404 (FORMA CORRETA — SEM *)
 app.use((req, res) => {
   res.status(404).json({ message: 'Rota não encontrada' });
 });
